@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	cl "github.com/ostafen/clover/v2"
 	"github.com/sinabyr/clovercli/internal"
+	"github.com/sinabyr/clovercli/util"
 )
 
 func main() {
@@ -41,8 +44,32 @@ func main() {
 		}
 	}
 
+	info, err := os.Stat(first)
+	if err != nil {
+		fmt.Println("error: ", err)
+		return
+	}
+	if !info.IsDir() {
+		fmt.Println("Not a directory")
+		return
+	}
+
+	fileExists, err := util.PathExists(filepath.Join(first, "data.db"))
+	if err != nil {
+		fmt.Println("error: ", err)
+		return
+	}
+	if !fileExists {
+		fmt.Println("error: ", "data.db doesn't exist")
+		return
+	}
+
+	db, err := cl.Open(first)
+	defer db.Close()
+
 	scanner := bufio.NewScanner(os.Stdin)
 
+	fmt.Print("Connected to Clover database!\n")
 	for {
 		fmt.Print("> ") // Prompt
 		if !scanner.Scan() {
@@ -54,16 +81,10 @@ func main() {
 
 		if line == "exit" || line == "quit" {
 			fmt.Println("Bye!")
-			break
+			return
 		}
 
-		if line == "exit" || line == "quit" {
-			fmt.Println("Bye!")
-			break
-		}
-
-		// Evaluate the command (replace this with real logic)
-		fmt.Println("You typed:", line)
+		internal.Parse(line, db)
 	}
 
 	if err := scanner.Err(); err != nil {

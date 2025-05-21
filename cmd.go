@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/chzyer/readline"
 	cl "github.com/ostafen/clover/v2"
 	"github.com/sinabyr/clovercli/internal"
 	"github.com/sinabyr/clovercli/util"
@@ -67,17 +68,27 @@ func main() {
 	db, err := cl.Open(first)
 	defer db.Close()
 
-	scanner := bufio.NewScanner(os.Stdin)
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          "> ",
+		HistoryFile:     "/tmp/clovercli.tmp",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rl.Close()
 
-	fmt.Print("Connected to Clover database!\n")
+	fmt.Println("Use ↑/↓ to navigate history. Type 'exit' to exit.")
+
 	for {
-		fmt.Print("> ") // Prompt
-		if !scanner.Scan() {
-			break // EOF or error
+		line, err := rl.Readline()
+		if err != nil { // e.g. io.EOF or Ctrl+D
+			break
 		}
-
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 
 		if line == "exit" || line == "quit" {
 			fmt.Println("Bye!")
@@ -85,9 +96,5 @@ func main() {
 		}
 
 		internal.Parse(line, db)
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error reading input:", err)
 	}
 }

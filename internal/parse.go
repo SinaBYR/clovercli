@@ -55,6 +55,29 @@ func parseShow(line string, db *clover.DB) {
 func parseDB(line string, db *clover.DB) {
 	commands := strings.Split(line, ".")
 
+	cmd := commands[1]
+	if strings.HasPrefix(cmd, "CreateCollection(") && strings.LastIndex(cmd, ")") == len(cmd)-1 {
+		arg, hasArg := util.ExtractStringArg(cmd)
+		if !hasArg {
+			fmt.Println("Error: Missing argument collectname name!")
+			return
+		}
+
+		EvaluateCreateCollection(arg, db)
+		return
+	}
+
+	if strings.HasPrefix(cmd, "DropCollection(") && strings.LastIndex(cmd, ")") == len(cmd)-1 {
+		arg, hasArg := util.ExtractStringArg(cmd)
+		if !hasArg {
+			fmt.Println("Error: Missing argument collectname name!")
+			return
+		}
+
+		DropCollection(arg, db)
+		return
+	}
+
 	collectionName := commands[1]
 	if len(commands) < 2 || commands[1] == "" {
 		fmt.Println("error: Missing collection name!")
@@ -79,7 +102,7 @@ func parseDB(line string, db *clover.DB) {
 	}
 
 	operation := commands[2]
-	if strings.HasPrefix(operation, "find") { // BUG finddddddd is also valid :/
+	if strings.HasPrefix(operation, "find(") && strings.LastIndex(operation, ")") == len(operation)-1 {
 		EvaluateFind(operation, collectionName, db)
 		return
 	}

@@ -45,6 +45,26 @@ func EvaluateFind(operation string, collectionName string, db *clover.DB) {
 	for _, doc := range docs {
 		util.PrettyPrint(doc)
 	}
+}
 
-	return
+func EvaluateCreateCollection(collectionName string, db *clover.DB) {
+	err := db.CreateCollection(collectionName)
+	if err != nil {
+		// TODO better error handling (result not found for passed in criteria)
+		fmt.Println("error: Failed to create collection")
+		return
+	}
+
+	fmt.Printf("Success: '%s' collection created\n", collectionName)
+}
+
+func DropCollection(collectionName string, db *clover.DB) {
+	err := db.DropCollection(collectionName)
+	if err != nil {
+		// TODO better error handling (result not found for passed in criteria)
+		fmt.Println("error: Failed to drop collection")
+		return
+	}
+
+	fmt.Printf("Success: '%s' collection dropped\n", collectionName)
 }

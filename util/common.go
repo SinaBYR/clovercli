@@ -31,7 +31,7 @@ func PrettyPrint(doc *document.Document) {
 // Extracts query passed into operation methods e.g. db.myCol.find({ _id: "123" })
 func ExtractJSONArg(input string) (string, bool) {
 	// Match function call with optional argument
-	re := regexp.MustCompile(`(?i)^\s*\w+\s*\(\s*(.*?)\s*\)\s*$`)
+	re := regexp.MustCompile(`\b(\w+)\s*\(\s*"([^"]+)"\s*\)`)
 	matches := re.FindStringSubmatch(input)
 	if len(matches) < 2 {
 		return "", false
@@ -51,4 +51,19 @@ func ParseFilterQuery(input string) (map[string]interface{}, error) {
 
 	// TODO Convert JS-style object (unquoted keys) to JSON
 	// fixed := regexp.MustCompile(`([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)`).ReplaceAllString(arg, `$1"$2"$3`)
+}
+
+// Extracts argument passed into a function e.g. db.CreateCollection("myNewCollection")
+func ExtractStringArg(input string) (string, bool) {
+	// Match function call with optional argument
+	re := regexp.MustCompile(`\s*\(\s*"([^"]+)"\s*\)`)
+	matches := re.FindStringSubmatch(input)
+	if len(matches) < 2 {
+		return "", false
+	}
+	arg := matches[1]
+	if strings.TrimSpace(arg) == "" {
+		return "", false // No argument
+	}
+	return arg, true // Argument found
 }

@@ -6,6 +6,7 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/ostafen/clover/v2 v2.0.0-alpha.3
+	github.com/yosuke-furukawa/json5 v0.1.1
 )
 
 require (

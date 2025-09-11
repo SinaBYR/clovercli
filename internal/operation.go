@@ -9,8 +9,38 @@ import (
 )
 
 // Parses operation string with any filtering criteria provided as its argument, then queries the database.
-func EvaluateFind(operation string, collectionName string, db *clover.DB) {
-	arg, hasArg := util.ExtractJSONArg(operation)
+//
+// "args" must be: function, collectionName, db
+func EvaluateFind(args ...interface{}) {
+	if len(args) < 1 {
+		fmt.Println("error: Too few inputs!")
+		return
+	}
+
+	if len(args) > 3 {
+		fmt.Println("error: Too many inputs!")
+		return
+	}
+
+	function, ok := args[0].(string)
+	if !ok {
+		fmt.Println("error: Bad input for collection name")
+		return
+	}
+
+	collectionName, ok := args[1].(string)
+	if !ok {
+		fmt.Println("error: Bad input for collection name")
+		return
+	}
+
+	db, ok := args[2].(*clover.DB)
+	if !ok {
+		fmt.Println("error: Bad input for collection name")
+		return
+	}
+
+	filterRawJson, hasArg := util.ExtractJsonArg(function)
 	if !hasArg {
 		docs, err := db.FindAll(q.NewQuery(collectionName))
 		if err != nil {
@@ -24,14 +54,32 @@ func EvaluateFind(operation string, collectionName string, db *clover.DB) {
 		return
 	}
 
-	rawQuery, err := util.ParseFilterQuery(arg)
+	queryFilter, err := util.ParseJson(filterRawJson)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	query := q.NewQuery(collectionName)
-	for key, value := range rawQuery {
+	fmt.Println("queryFilter: ", queryFilter)
+	for key, value := range queryFilter {
+		fmt.Println("key: ", key, "value:‌", value)
+		if util.IsStructLike(value) {
+			innerMap, ok := value.(map[string]interface{})
+			fmt.Println("innerMap:‌", innerMap)
+			if ok {
+				fmt.Println("Ok")
+				// check for $gte, ...
+				for directive, directiveValue := range innerMap {
+					fmt.Println(directive, directiveValue)
+				}
+			} else {
+				fmt.Println("Not Ok")
+			}
+		} else {
+			fmt.Println(value)
+			fmt.Println("Not a struct")
+		}
 		query = query.Where(q.Field(key).Eq(value))
 	}
 
@@ -58,7 +106,7 @@ func EvaluateCreateCollection(collectionName string, db *clover.DB) {
 	fmt.Printf("Success: '%s' collection created\n", collectionName)
 }
 
-func DropCollection(collectionName string, db *clover.DB) {
+func EvaluateDropCollection(collectionName string, db *clover.DB) {
 	err := db.DropCollection(collectionName)
 	if err != nil {
 		// TODO better error handling (result not found for passed in criteria)

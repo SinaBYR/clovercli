@@ -8,17 +8,16 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/ostafen/clover/v2"
-	"github.com/sinabyr/clovercli/util"
 )
 
-func Parse(line string, db *clover.DB) {
+func Parse(line string, db *clover.DB, dbObj *Object) {
 	if strings.HasPrefix(line, "show ") {
 		parseShow(line, db)
 		return
 	}
 
 	if strings.HasPrefix(line, "db.") {
-		parseDB(line, db)
+		parseDB(line, db, dbObj)
 		return
 	}
 }
@@ -52,60 +51,57 @@ func parseShow(line string, db *clover.DB) {
 }
 
 // Parse and evaluate "db" command in REPL
-func parseDB(line string, db *clover.DB) {
-	commands := strings.Split(line, ".")
+func parseDB(line string, db *clover.DB, dbObj *Object) {
+	parts := strings.Split(line, ".")
+	open := strings.Index(parts[1], "(")
+	close := strings.LastIndex(parts[1], ")")
+	if open == -1 && close == -1 {
+		// Check collections
+		currCollectionName := parts[1]
 
-	cmd := commands[1]
-	if strings.HasPrefix(cmd, "CreateCollection(") && strings.LastIndex(cmd, ")") == len(cmd)-1 {
-		arg, hasArg := util.ExtractStringArg(cmd)
-		if !hasArg {
-			fmt.Println("Error: Missing argument collectname name!")
-			return
+		for _, coll := range dbObj.Collections {
+			if coll.Name == currCollectionName {
+				if len(parts) == 2 {
+					fmt.Println(line)
+					return
+				}
+
+				open := strings.Index(parts[2], "(")
+				close := strings.LastIndex(parts[2], ")")
+
+				if open != -1 && close != -1 {
+					currMethodName := strings.TrimSpace(parts[2][:open])
+
+					for _, m := range coll.Methods {
+						if m.Name == currMethodName {
+							fmt.Println("func found!")
+							m.Func(currMethodName, currCollectionName, db)
+							return
+						}
+					}
+				}
+
+				fmt.Println(line)
+				return
+			}
 		}
 
-		EvaluateCreateCollection(arg, db)
+		fmt.Printf("Error: %s not found!\n", parts[1])
 		return
 	}
 
-	if strings.HasPrefix(cmd, "DropCollection(") && strings.LastIndex(cmd, ")") == len(cmd)-1 {
-		arg, hasArg := util.ExtractStringArg(cmd)
-		if !hasArg {
-			fmt.Println("Error: Missing argument collectname name!")
-			return
+	if open != -1 && close != -1 {
+		// Check methods
+		currMethodName := strings.TrimSpace(parts[1][:open])
+
+		for _, m := range dbObj.Methods {
+			if m.Name == currMethodName {
+				fmt.Println("func found!")
+				return
+			}
 		}
 
-		DropCollection(arg, db)
+		fmt.Printf("Error: Method \"%s\" not found!\n", currMethodName)
 		return
 	}
-
-	collectionName := commands[1]
-	if len(commands) < 2 || commands[1] == "" {
-		fmt.Println("error: Missing collection name!")
-		return
-	}
-
-	colls, err := db.ListCollections()
-	if err != nil {
-		log.Fatal("Failed to list collections")
-		return
-	}
-
-	collectionExists := util.ContainsString(colls, collectionName)
-	if !collectionExists {
-		fmt.Printf("'%s': No such collection\n", collectionName)
-		return
-	}
-
-	if len(commands) < 3 || commands[2] == "" {
-		fmt.Println("error: Missing operation!")
-		return
-	}
-
-	operation := commands[2]
-	if strings.HasPrefix(operation, "find(") && strings.LastIndex(operation, ")") == len(operation)-1 {
-		EvaluateFind(operation, collectionName, db)
-		return
-	}
-
-	fmt.Printf("'%s' operation not recognized!\n", commands[2])
 }

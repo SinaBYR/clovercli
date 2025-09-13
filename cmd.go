@@ -81,69 +81,19 @@ func main() {
 
 	fmt.Println("Use ↑/↓ to navigate history. Type 'exit' to exit.")
 
+	dbObj := internal.NewObject("db")
+	dbObj.RegisterField(internal.Field{Name: "path", Value: first})
+	dbObj.RegisterMethod(internal.Method{Name: "CreateCollection", Func: internal.EvaluateCreateCollection})
+	dbObj.RegisterMethod(internal.Method{Name: "DropCollection", Func: internal.EvaluateDropCollection})
+
 	colls, err := db.ListCollections()
 	if err != nil {
 		log.Fatal("Error: Something went wrong!")
 		return
 	}
-
-	dbObj := internal.NewObject("db")
 	for _, c := range colls { // Loop over collections
 		dbObj.RegisterCollection(c)
 	}
-	dbObj.RegisterField(internal.Field{Name: "path", Value: first})
-	dbObj.RegisterMethod(internal.Method{Name: "CreateCollection", Func: func(args ...interface{}) {
-		if len(args) < 1 {
-			fmt.Println("error: Too few inputs!")
-			return
-		}
-
-		if len(args) > 1 {
-			fmt.Println("error: Too many inputs!")
-			return
-		}
-
-		collectionName, ok := args[0].(string)
-		if !ok {
-			fmt.Println("error: Bad input for collection name")
-			return
-		}
-
-		err := db.CreateCollection(collectionName)
-		if err != nil {
-			// TODO better error handling (result not found for passed in criteria)
-			fmt.Println("error: Failed to create collection")
-			return
-		}
-
-		fmt.Printf("Success: '%s' collection created\n", collectionName)
-	}})
-	dbObj.RegisterMethod(internal.Method{Name: "DropCollection", Func: func(args ...interface{}) {
-		if len(args) < 1 {
-			fmt.Println("error: Too few inputs!")
-			return
-		}
-
-		if len(args) > 1 {
-			fmt.Println("error: Too many inputs!")
-			return
-		}
-
-		collectionName, ok := args[0].(string)
-		if !ok {
-			fmt.Println("error: Bad input for collection name")
-			return
-		}
-
-		err := db.DropCollection(collectionName)
-		if err != nil {
-			// TODO better error handling (result not found for passed in criteria)
-			fmt.Println("error: Failed to drop collection")
-			return
-		}
-
-		fmt.Printf("Success: '%s' collection dropped\n", collectionName)
-	}})
 
 	for {
 		line, err := rl.Readline()

@@ -96,7 +96,7 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 
 		for _, m := range dbObj.Methods {
 			if m.Name == currMethodName {
-				fmt.Println("func found!")
+				m.Func(parts[1], db)
 				return
 			}
 		}

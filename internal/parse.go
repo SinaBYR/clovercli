@@ -55,8 +55,10 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 	parts := strings.Split(line, ".")
 	open := strings.Index(parts[1], "(")
 	close := strings.LastIndex(parts[1], ")")
+
+	// parts[1] doesn't have opening and closing braces
 	if open == -1 && close == -1 {
-		// Check collections
+		// search for collection name
 		currCollectionName := parts[1]
 
 		for _, coll := range dbObj.Collections {
@@ -66,6 +68,7 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 					return
 				}
 
+				// search for method name on collection
 				open := strings.Index(parts[2], "(")
 				close := strings.LastIndex(parts[2], ")")
 
@@ -74,7 +77,6 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 
 					for _, m := range coll.Methods {
 						if m.Name == currMethodName {
-							fmt.Println("func found!")
 							m.Func(currMethodName, currCollectionName, db)
 							return
 						}
@@ -86,12 +88,21 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 			}
 		}
 
-		fmt.Printf("Error: %s not found!\n", parts[1])
+		// search for top-level db methods
+		for _, m := range dbObj.Methods {
+			if m.Name == parts[1] {
+				fmt.Println(line)
+				return
+			}
+		}
+
+		fmt.Printf("Error: \"%s\" not found!\n", parts[1])
 		return
 	}
 
+	// parts[1] has opening and closing braces
 	if open != -1 && close != -1 {
-		// Check methods
+		// search for top-level db methods
 		currMethodName := strings.TrimSpace(parts[1][:open])
 
 		for _, m := range dbObj.Methods {

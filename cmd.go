@@ -79,6 +79,7 @@ func main() {
 	}
 	defer rl.Close()
 
+	fmt.Println("CloverCLI - v0.1.1")
 	fmt.Println("Use ↑/↓ to navigate history. Type 'exit' to exit.")
 
 	dbObj := internal.NewObject("db")

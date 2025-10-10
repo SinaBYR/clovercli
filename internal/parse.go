@@ -76,10 +76,11 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 
 				if open != -1 && close != -1 {
 					currMethodName := strings.TrimSpace(parts[2][:open])
+					currMethodArgument := strings.TrimSpace(parts[2][open+1 : close])
 
 					for _, m := range coll.Methods {
 						if m.Name == currMethodName {
-							m.Func(currMethodName, currCollectionName, db)
+							m.Func(db, currCollectionName, currMethodName, currMethodArgument)
 							return
 						}
 					}

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ostafen/clover/v2"
 	q "github.com/ostafen/clover/v2/query"
@@ -17,12 +18,18 @@ func EvaluateFind(args ...interface{}) {
 		return
 	}
 
-	if len(args) > 3 {
+	if len(args) > 4 {
 		fmt.Println("error: Too many inputs!")
 		return
 	}
 
-	function, ok := args[0].(string)
+	functionArgument, ok := args[3].(string)
+	if !ok {
+		fmt.Println("error: Bad input for find filter argument")
+		return
+	}
+
+	_, ok = args[2].(string)
 	if !ok {
 		fmt.Println("error: Bad input for collection name")
 		return
@@ -34,14 +41,14 @@ func EvaluateFind(args ...interface{}) {
 		return
 	}
 
-	db, ok := args[2].(*clover.DB)
+	db, ok := args[0].(*clover.DB)
 	if !ok {
 		fmt.Println("error: Bad input for collection name")
 		return
 	}
 
-	filterRawJson, hasArg := util.ExtractJsonArg(function)
-	if !hasArg {
+	if functionArgument == "" {
+		fmt.Println("arg empty")
 		docs, err := db.FindAll(q.NewQuery(collectionName))
 		if err != nil {
 			fmt.Println("error: Failed to get documents")
@@ -54,39 +61,43 @@ func EvaluateFind(args ...interface{}) {
 		return
 	}
 
-	queryFilter, err := util.ParseJson(filterRawJson)
+	queryFilter, err := util.ParseJson(functionArgument)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("error: ", err)
 		return
 	}
 
 	query := q.NewQuery(collectionName)
-	fmt.Println("queryFilter: ", queryFilter)
+	// fmt.Println("queryFilter: ", queryFilter)
 	for key, value := range queryFilter {
-		fmt.Println("key: ", key, "value:‌", value)
-		if util.IsStructLike(value) {
-			innerMap, ok := value.(map[string]interface{})
-			fmt.Println("innerMap:‌", innerMap)
-			if ok {
-				fmt.Println("Ok")
-				// check for $gte, ...
-				for directive, directiveValue := range innerMap {
-					fmt.Println(directive, directiveValue)
-				}
-			} else {
-				fmt.Println("Not Ok")
-			}
-		} else {
-			fmt.Println(value)
-			fmt.Println("Not a struct")
-		}
-		query = query.Where(q.Field(key).Eq(value))
+		// fmt.Println("key: ", key, "value:‌", value)
+		// if util.IsStructLike(value) {
+		// 	innerMap, ok := value.(map[string]interface{})
+		// 	fmt.Println("innerMap:‌", innerMap)
+		// 	if ok {
+		// 		fmt.Println("Ok")
+		// 		// check for $gte, ...
+		// 		for directive, directiveValue := range innerMap {
+		// 			fmt.Println(directive, directiveValue)
+		// 		}
+		// 	} else {
+		// 		fmt.Println("Not Ok")
+		// 	}
+		// } else {
+		// 	fmt.Println(value)
+		// 	fmt.Println("Not a struct")
+		// }
+		query = query.Where(q.Field(strings.TrimSpace(key)).Eq(value))
 	}
 
 	docs, err := db.FindAll(query)
 	if err != nil {
-		// TODO better error handling (result not found for passed in criteria)
 		fmt.Println("error: Failed to get documents")
+		return
+	}
+
+	if len(docs) == 0 {
+		fmt.Println("[]")
 		return
 	}
 

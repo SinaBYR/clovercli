@@ -54,7 +54,9 @@ func parseShow(line string, db *clover.DB) {
 func parseDB(line string, db *clover.DB, dbObj *Object) {
 	parts := strings.Split(line, ".")
 	open := strings.Index(parts[1], "(")
-	close := strings.LastIndex(parts[1], ")")
+	lastOpen := strings.LastIndex(parts[1], "(")
+	close := strings.Index(parts[1], ")")
+	lastClose := strings.LastIndex(parts[1], ")")
 
 	// parts[1] doesn't have opening and closing braces
 	if open == -1 && close == -1 {
@@ -101,7 +103,7 @@ func parseDB(line string, db *clover.DB, dbObj *Object) {
 	}
 
 	// parts[1] has opening and closing braces
-	if open != -1 && close != -1 {
+	if open != -1 && close != -1 && open == lastOpen && close == lastClose {
 		// search for top-level db methods
 		currMethodName := strings.TrimSpace(parts[1][:open])
 

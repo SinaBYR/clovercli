@@ -28,5 +28,5 @@ Error: Bad option: %s
 }
 
 func GenerateVersion() string {
-	return fmt.Sprintf(`CloverCLI - %s`, "v0.1.0")
+	return fmt.Sprintf(`CloverCLI - %s`, "v0.1.1")
 }

@@ -43,6 +43,50 @@ func ExtractJsonArg(input string) (string, bool) {
 	return arg, true
 }
 
+// FindArgsBounds returns the index of the opening parenthesis of a function
+// call along with the index of the matching closing one. Parentheses inside
+// quoted strings are ignored, so that find({title: "Dr. No"}) is handled
+// correctly. It returns (-1, -1) when no balanced call is present, and
+// (-1, i) when a closing parenthesis comes before any opening one.
+func FindArgsBounds(input string) (int, int) {
+	open, depth := -1, 0
+	var quote byte
+
+	for i := 0; i < len(input); i++ {
+		c := input[i]
+
+		if quote != 0 {
+			switch c {
+			case '\\':
+				i++ // skip the escaped character
+			case quote:
+				quote = 0
+			}
+			continue
+		}
+
+		switch c {
+		case '"', '\'':
+			quote = c
+		case '(':
+			if open == -1 {
+				open = i
+			}
+			depth++
+		case ')':
+			if open == -1 {
+				return -1, i
+			}
+			depth--
+			if depth == 0 {
+				return open, i
+			}
+		}
+	}
+
+	return -1, -1
+}
+
 // Parses json and maps key-value pairs into a map
 func ParseJson(input string) (map[string]interface{}, error) {
 	var result map[string]interface{}

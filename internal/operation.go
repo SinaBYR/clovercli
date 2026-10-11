@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ostafen/clover/v2"
 	q "github.com/ostafen/clover/v2/query"
@@ -48,7 +47,6 @@ func EvaluateFind(args ...interface{}) {
 	}
 
 	if functionArgument == "" {
-		fmt.Println("arg empty")
 		docs, err := db.FindAll(q.NewQuery(collectionName))
 		if err != nil {
 			fmt.Println("error: Failed to get documents")
@@ -67,27 +65,15 @@ func EvaluateFind(args ...interface{}) {
 		return
 	}
 
+	criteria, err := parseFilter(queryFilter)
+	if err != nil {
+		fmt.Println("error: ", err)
+		return
+	}
+
 	query := q.NewQuery(collectionName)
-	// fmt.Println("queryFilter: ", queryFilter)
-	for key, value := range queryFilter {
-		// fmt.Println("key: ", key, "value:‌", value)
-		// if util.IsStructLike(value) {
-		// 	innerMap, ok := value.(map[string]interface{})
-		// 	fmt.Println("innerMap:‌", innerMap)
-		// 	if ok {
-		// 		fmt.Println("Ok")
-		// 		// check for $gte, ...
-		// 		for directive, directiveValue := range innerMap {
-		// 			fmt.Println(directive, directiveValue)
-		// 		}
-		// 	} else {
-		// 		fmt.Println("Not Ok")
-		// 	}
-		// } else {
-		// 	fmt.Println(value)
-		// 	fmt.Println("Not a struct")
-		// }
-		query = query.Where(q.Field(strings.TrimSpace(key)).Eq(value))
+	if criteria != nil {
+		query = query.Where(criteria)
 	}
 
 	docs, err := db.FindAll(query)

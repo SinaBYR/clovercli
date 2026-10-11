@@ -8,6 +8,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/ostafen/clover/v2"
+	"github.com/sinabyr/clovercli/util"
 )
 
 func Parse(line string, db *clover.DB, dbObj *Object) {
@@ -52,70 +53,86 @@ func parseShow(line string, db *clover.DB) {
 
 // Parse and evaluate "db" command in REPL
 func parseDB(line string, db *clover.DB, dbObj *Object) {
-	parts := strings.Split(line, ".")
-	open := strings.Index(parts[1], "(")
-	lastOpen := strings.LastIndex(parts[1], "(")
-	close := strings.Index(parts[1], ")")
-	lastClose := strings.LastIndex(parts[1], ")")
+	rest := strings.TrimPrefix(strings.TrimSpace(line), "db.")
 
-	// parts[1] doesn't have opening and closing braces
-	if open == -1 && close == -1 {
-		// search for collection name
-		currCollectionName := parts[1]
-
-		for _, coll := range dbObj.Collections {
-			if coll.Name == currCollectionName {
-				if len(parts) == 2 {
-					fmt.Println(line)
-					return
-				}
-
-				// search for method name on collection
-				open := strings.Index(parts[2], "(")
-				close := strings.LastIndex(parts[2], ")")
-
-				if open != -1 && close != -1 {
-					currMethodName := strings.TrimSpace(parts[2][:open])
-					currMethodArgument := strings.TrimSpace(parts[2][open+1 : close])
-
-					for _, m := range coll.Methods {
-						if m.Name == currMethodName {
-							m.Func(db, currCollectionName, currMethodName, currMethodArgument)
-							return
-						}
-					}
-				}
-
-				fmt.Println(line)
-				return
-			}
+	open, closeIdx := util.FindArgsBounds(rest)
+	if open == -1 {
+		if closeIdx != -1 || strings.Contains(rest, "(") {
+			fmt.Println("Error: Unbalanced parentheses in command!")
+			return
 		}
 
-		// search for top-level db methods
-		for _, m := range dbObj.Methods {
-			if m.Name == parts[1] {
-				fmt.Println(line)
-				return
-			}
-		}
-
-		fmt.Printf("Error: \"%s\" not found!\n", parts[1])
+		parseDBRef(rest, dbObj)
 		return
 	}
 
-	// parts[1] has opening and closing braces
-	if open != -1 && close != -1 && open == lastOpen && close == lastClose {
-		// search for top-level db methods
-		currMethodName := strings.TrimSpace(parts[1][:open])
+	// The argument is taken verbatim from the parentheses instead of splitting
+	// the line on dots, since a filter may contain any of them: dots in strings
+	// or field names, parentheses inside a regex, etc.
+	head := rest[:open]
+	arg := strings.TrimSpace(rest[open+1 : closeIdx])
 
-		for _, m := range dbObj.Methods {
-			if m.Name == currMethodName {
-				m.Func(parts[1], db)
+	// db.movies.find({year: 2010})
+	if dot := strings.LastIndex(head, "."); dot != -1 {
+		dispatchCollectionMethod(db, dbObj, head[:dot], strings.TrimSpace(head[dot+1:]), arg)
+		return
+	}
+
+	// db.CreateCollection("movies")
+	dispatchTopLevelMethod(db, dbObj, head, rest[:closeIdx+1])
+}
+
+// parseDBRef handles commands with no parentheses, like "db.movies" or
+// "db.CreateCollection", which are echoed back to the user.
+func parseDBRef(rest string, dbObj *Object) {
+	head, _, _ := strings.Cut(rest, ".")
+
+	for _, coll := range dbObj.Collections {
+		if coll.Name == head {
+			fmt.Println("db." + rest)
+			return
+		}
+	}
+
+	for _, m := range dbObj.Methods {
+		if m.Name == head {
+			fmt.Println("db." + rest)
+			return
+		}
+	}
+
+	fmt.Printf("Error: \"%s\" not found!\n", head)
+}
+
+// dispatchCollectionMethod looks up a method on a collection and calls it.
+func dispatchCollectionMethod(db *clover.DB, dbObj *Object, collectionName, methodName, arg string) {
+	for _, coll := range dbObj.Collections {
+		if coll.Name != collectionName {
+			continue
+		}
+
+		for _, m := range coll.Methods {
+			if m.Name == methodName {
+				m.Func(db, collectionName, methodName, arg)
 				return
 			}
 		}
 
-		fmt.Printf("Error: Method \"%s\" not found!\n", currMethodName)
+		fmt.Printf("Error: Method \"%s\" not found on collection \"%s\"!\n", methodName, collectionName)
 		return
 	}
+
+	fmt.Printf("Error: \"%s\" not found!\n", collectionName)
+}
+
+// dispatchTopLevelMethod looks up a method of the db object and calls it.
+func dispatchTopLevelMethod(db *clover.DB, dbObj *Object, methodName, function string) {
+	for _, m := range dbObj.Methods {
+		if m.Name == methodName {
+			m.Func(function, db)
+			return
+		}
+	}
+
+	fmt.Printf("Error: Method \"%s\" not found!\n", methodName)
 }
